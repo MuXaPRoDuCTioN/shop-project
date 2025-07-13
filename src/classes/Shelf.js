@@ -3,22 +3,24 @@ export default class Shelf {
     this.position = { x, y };
     this.productType = productType;
     this.maxQuantity = maxQuantity;
-    this.quantity = maxQuantity;
+    this.currentQuantity = maxQuantity;
   }
 
   getCurrentQuantity() {
-    return this.quantity;
+    return this.currentQuantity;
   }
 
+  // Берёт один товар и возвращает сам продукт, или null, если на полке пусто
   take() {
-    if (this.quantity > 0) {
-      this.quantity--;
-      return this.productType;
+    if (this.currentQuantity > 0) {
+      this.currentQuantity--;
+      // возвращаем отдельный объект продукта, чтобы не мутировать оригинал
+      return { ...this.productType };
     }
     return null;
   }
 
-  restock() {
-    this.quantity = this.maxQuantity;
+  restock(amount = 10) {
+    this.currentQuantity = Math.min(this.currentQuantity + amount, this.maxQuantity);
   }
 }

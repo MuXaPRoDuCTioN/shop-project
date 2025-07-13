@@ -1,49 +1,17 @@
 import { findPath } from './Pathfinding.js';
 
 export default class Manager {
-  constructor(id, shelves, position) {
-    this.id = id;
+  static idCounter = 1;
+
+  constructor(shelves, position = { x: 0, y: 0 }) {
+    this.id = Manager.idCounter++;
     this.shelves = shelves;
-    this.position = { ...position };
-    this.targetShelf = null;
+    this.position = position;
     this.path = [];
-    this.carrying = null;
-  }
-
-  reset() {
-    this.path = [];
-    this.carrying = null;
     this.targetShelf = null;
-  }
-
-  update(store) {
-    if (!this.targetShelf || this.targetShelf.getCurrentQuantity() >= this.targetShelf.maxQuantity) {
-      this.targetShelf = this.shelves.find(s => s.getCurrentQuantity() < s.maxQuantity);
-      if (this.targetShelf) {
-        const adj = this.getAdjacentTile(this.targetShelf.position, store);
-        this.path = findPath(this.position, adj,
-          (x, y) => !store.getShelfAt(x, y),
-          store.mapWidth, store.mapHeight
-        ) || [];
-      }
-    }
-
-    if (this.path.length > 0) {
-      this.position = this.path.shift();
-    }
-
-    if (this.targetShelf) {
-      const adj = this.getAdjacentTile(this.targetShelf.position, store);
-      if (this.position.x === adj.x && this.position.y === adj.y) {
-        this.targetShelf.restock();
-        this.targetShelf = null;
-        this.path = [];
-      }
-    }
   }
 
   getAdjacentTile(pos, store) {
-    if (!pos) return { x: 0, y: 0 };
     const dirs = [
       { x: pos.x + 1, y: pos.y },
       { x: pos.x - 1, y: pos.y },
@@ -54,6 +22,55 @@ export default class Manager {
       p.x >= 0 && p.x < store.mapWidth &&
       p.y >= 0 && p.y < store.mapHeight &&
       !store.getShelfAt(p.x, p.y)
-    ) || pos;
+    ) || this.position;
+  }
+
+  chooseTarget() {
+    for (const shelf of this.shelves) {
+      if (shelf.getCurrentQuantity() < shelf.maxQuantity) {
+        return shelf;
+      }
+    }
+    return null;
+  }
+
+  update(store) {
+    if (!this.targetShelf || this.targetShelf.getCurrentQuantity() === this.targetShelf.maxQuantity) {
+      this.targetShelf = this.chooseTarget(store);
+      this.path = [];
+    }
+
+    if (this.targetShelf) {
+      const targetPos = this.getAdjacentTile(this.targetShelf.position, store);
+
+      if (!this.path.length) {
+        this.path = findPath(
+          this.position,
+          targetPos,
+          (x, y) => !store.getShelfAt(x, y),
+          store.mapWidth,
+          store.mapHeight
+        ) || [];
+      }
+
+      if (this.path.length > 0) {
+        this.position = this.path.shift();
+      }
+
+      const adjacent = Math.abs(this.position.x - this.targetShelf.position.x) +
+                       Math.abs(this.position.y - this.targetShelf.position.y) === 1;
+
+      if (adjacent) {
+        this.targetShelf.restock();
+        this.path = [];
+        this.targetShelf = null;
+      }
+    }
+  }
+
+  reset() {
+    this.position = { x: 0, y: 0 };
+    this.path = [];
+    this.targetShelf = null;
   }
 }
