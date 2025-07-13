@@ -1,21 +1,17 @@
 export default class Cart {
   constructor() {
-    this.items = [];
+    this.products = [];
   }
 
   add(product) {
-    this.items.push(product);
-  }
-
-  total() {
-    return this.items.reduce((sum, p) => sum + p.price, 0);
+    this.products.push(product);
   }
 
   listNames() {
-    return this.items.map(p => p.name);
+    return this.products.map(p => p.name);
   }
 
-  has(name) {
-    return this.items.some(p => p.name === name);
+  getTotalPrice() {
+    return this.products.reduce((sum, p) => sum + p.price, 0);
   }
 }

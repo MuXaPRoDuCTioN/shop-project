@@ -1,97 +1,95 @@
-import Cart from './Cart.js';
 import { findPath } from './Pathfinding.js';
+import Cart from './Cart.js';
 
 export default class Customer {
-  constructor(id, shoppingList, entryX = 0, entryY = 0, mapWidth, mapHeight, isWalkable) {
-    this.id = id;
+  static idCounter = 1;
+
+  constructor(shoppingList) {
+    this.id = Customer.idCounter++;
+    this.shoppingList = Array.isArray(shoppingList) && shoppingList.length
+      ? [...shoppingList]
+      : ['Яблоки'];
     this.cart = new Cart();
-    this.shoppingList = shoppingList;
-    this.x = entryX;
-    this.y = entryY;
+    this.position = { x: 0, y: 0 };
     this.path = [];
-    this.pathIndex = 0;
-    this.done = false;
     this.checkedOut = false;
-    this.shoppingDone = false;
-    this.mapWidth = mapWidth;
-    this.mapHeight = mapHeight;
-    this.isWalkable = isWalkable;
   }
 
-  getAdjacentTo(pos) {
-    return [
-      { x: pos.x - 1, y: pos.y },
+  getAdjacentTile(pos, store) {
+    const dirs = [
       { x: pos.x + 1, y: pos.y },
+      { x: pos.x - 1, y: pos.y },
+      { x: pos.x, y: pos.y + 1 },
       { x: pos.x, y: pos.y - 1 },
-      { x: pos.x, y: pos.y + 1 }
     ];
+    return dirs.find(p =>
+      p.x >= 0 && p.x < store.mapWidth &&
+      p.y >= 0 && p.y < store.mapHeight &&
+      !store.getShelfAt(p.x, p.y)
+    ) || pos;
   }
 
-  isNear(pos) {
-    return this.getAdjacentTo(pos).some(p => p.x === this.x && p.y === this.y);
-  }
+  chooseNextTarget(store) {
+    if (this.shoppingList.length === 0) return store.checkout.position;
 
-  planPathTo(target) {
-    const path = findPath(
-      { x: this.x, y: this.y },
-      target,
-      this.isWalkable,
-      this.mapWidth,
-      this.mapHeight
-    );
-    if (path) {
-      this.path = path;
-      this.pathIndex = 1; // 0 - current position
-    } else {
-      this.path = [];
-      this.pathIndex = 0;
-    }
-  }
-
-  moveStep() {
-    if (this.done) return;
-    if (!this.path || this.pathIndex >= this.path.length) return;
-
-    const targetPos = this.path[this.pathIndex];
-    if (targetPos.x === this.x && targetPos.y === this.y) {
-      this.pathIndex++;
-      return;
+    for (const prod of this.shoppingList) {
+      const shelf = store.shelves.find(s =>
+        s.productType.name === prod && s.getCurrentQuantity() > 0
+      );
+      if (shelf) return this.getAdjacentTile(shelf.position, store);
     }
 
-    this.x = targetPos.x;
-    this.y = targetPos.y;
-    this.pathIndex++;
+    return store.checkout.position;
   }
 
-  tryShop(shelves, checkoutPos) {
-    if (this.shoppingDone) return;
-
-    for (const shelf of shelves) {
-      if (this.isNear(shelf.position)) {
-        const product = shelf.productType;
-        const needed = this.shoppingList.includes(product.name) && !this.cart.has(product.name);
-        const tempted = !this.cart.has(product.name) && Math.random() < product.attractiveness;
-        if (needed || tempted) {
-          const taken = shelf.take();
-          if (taken) this.cart.add(taken);
+  tryTakeProduct(store) {
+    const dirs = [
+      { x: this.position.x + 1, y: this.position.y },
+      { x: this.position.x - 1, y: this.position.y },
+      { x: this.position.x, y: this.position.y + 1 },
+      { x: this.position.x, y: this.position.y - 1 },
+    ];
+    for (const n of dirs) {
+      const shelf = store.getShelfAt(n.x, n.y);
+      if (shelf && shelf.getCurrentQuantity() > 0) {
+        const isNeeded = this.shoppingList.includes(shelf.productType.name);
+        if (isNeeded || Math.random() < shelf.productType.attractiveness * 0.05) {
+          const product = shelf.take();
+          if (product) {
+            this.cart.add(product);
+            if (isNeeded) {
+              this.shoppingList = this.shoppingList.filter(p => p !== product.name);
+            }
+            this.path = [];
+            break;
+          }
         }
       }
     }
-
-    const stillNeed = this.shoppingList.filter(item => !this.cart.has(item));
-    if (stillNeed.length === 0) {
-      this.shoppingDone = true;
-      // Планируем путь к кассе
-      this.planPathTo(checkoutPos);
-    }
   }
 
-  tryCheckout(checkout) {
-    if (this.x === checkout.x && this.y === checkout.y && !this.checkedOut) {
-      this.checkedOut = true;
-      this.done = true;
-      return this.cart.total();
+  update(store) {
+    if (this.checkedOut) return;
+
+    if (!this.path || this.path.length === 0) {
+      const target = this.chooseNextTarget(store);
+      this.path = findPath(this.position, target,
+        (x, y) => !store.getShelfAt(x, y),
+        store.mapWidth, store.mapHeight
+      ) || [];
     }
-    return 0;
+
+    if (this.path.length > 0) {
+      this.position = this.path.shift();
+    }
+
+    if (this.position.x === store.checkout.position.x &&
+        this.position.y === store.checkout.position.y) {
+      store.checkout.checkout(this);
+      this.checkedOut = true;
+      return;
+    }
+
+    this.tryTakeProduct(store);
   }
 }

@@ -1,10 +1,10 @@
 export default class Checkout {
   constructor(x, y) {
-    this.revenue = 0;
     this.position = { x, y };
+    this.totalRevenue = 0;
   }
 
-  process(customer) {
-    this.revenue += customer.tryCheckout(this.position);
+  checkout(customer) {
+    this.totalRevenue += customer.cart.getTotalPrice();
   }
 }

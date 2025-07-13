@@ -23,8 +23,14 @@
         :class="getCellClass(x(i), y(i))"
         @click="selectEntity(x(i), y(i))"
       >
-        <span v-if="customerAt(x(i), y(i))" class="customer">🧍</span>
-        <span v-else-if="managerAt(x(i), y(i))" class="manager">🧑‍💼</span>
+        <transition name="fade-move">
+          <template v-if="customerAt(x(i), y(i))">
+            <span class="customer">🧍</span>
+          </template>
+          <template v-else-if="managerAt(x(i), y(i))">
+            <span class="manager">🧑‍💼</span>
+          </template>
+        </transition>
       </div>
     </div>
 
@@ -43,8 +49,10 @@
     <div v-else-if="selectedManager" class="info-box">
       <h3>Менеджер {{ selectedManager.id }}</h3>
       <p v-if="selectedManager.carrying">
-        Несёт: {{ selectedManager.carrying.name }}<br />
-        К точке: ({{ selectedManager.targetShelf?.position.x }}, {{ selectedManager.targetShelf?.position.y }})
+        Несёт: {{ selectedManager.carrying.name }}
+      </p>
+      <p v-if="selectedManager.targetShelf">
+        Цель: {{ selectedManager.targetShelf.productType.name }}
       </p>
       <p v-else>
         Ожидает задания
@@ -81,6 +89,7 @@ export default {
         gridTemplateColumns: `repeat(${this.mapWidth}, 40px)`,
         gridTemplateRows: `repeat(${this.mapHeight}, 40px)`,
         gap: '1px',
+        width: 'max-content',
       };
     },
   },
@@ -92,13 +101,13 @@ export default {
       return Math.floor((i - 1) / this.mapWidth);
     },
     addCustomer() {
-      // Для примера, покупатель хочет 1-2 случайных товара
-      const allProducts = this.store.availableProducts.map((p) => p.name);
-      const count = Math.floor(Math.random() * 2) + 1;
+      const allProducts = this.store.getAllProductNames();
+      const count = Math.floor(Math.random() * 3) + 1;
       const randomItems = [];
       for (let i = 0; i < count; i++) {
         randomItems.push(allProducts[Math.floor(Math.random() * allProducts.length)]);
       }
+      if (randomItems.length === 0) randomItems.push(allProducts[0]);
       this.store.addCustomer(randomItems);
     },
     tick() {
@@ -153,6 +162,12 @@ export default {
       this.selectedManager = this.managerAt(x, y) || null;
     },
     getCellClass(x, y) {
+      if (
+        this.selectedManager?.targetShelf?.position?.x === x &&
+        this.selectedManager?.targetShelf?.position?.y === y
+      ) {
+        return 'target-shelf';
+      }
       if (this.isShelf(x, y)) return 'shelf';
       if (this.isCheckout(x, y)) return 'checkout';
       return '';
@@ -172,6 +187,7 @@ export default {
 <style scoped>
 .grid {
   margin-top: 20px;
+  width: max-content;
 }
 .cell {
   width: 40px;
@@ -183,20 +199,23 @@ export default {
   align-items: center;
   user-select: none;
   cursor: pointer;
+  position: relative;
 }
 .shelf {
   background-color: lightgreen !important;
 }
+.target-shelf {
+  background-color: red !important;
+}
 .checkout {
   background-color: lightblue !important;
 }
-.customer {
-  font-size: 24px;
-  line-height: 1;
-}
+.customer,
 .manager {
   font-size: 24px;
   line-height: 1;
+  position: absolute;
+  transition: all 0.4s ease;
 }
 .controls {
   margin-bottom: 10px;
@@ -211,5 +230,9 @@ export default {
   border: 1px solid #888;
   background: #eee;
   width: 320px;
+}
+.fade-move-enter-active,
+.fade-move-leave-active {
+  transition: all 0.4s ease;
 }
 </style>

@@ -1,30 +1,24 @@
-import Product from './Product.js';
-
 export default class Shelf {
-  constructor(x, y, product, maxQuantity = 5) {
+  constructor(x, y, productType, maxQuantity) {
     this.position = { x, y };
-    this.productType = product;
-    this.products = [];
+    this.productType = productType;
     this.maxQuantity = maxQuantity;
-  }
-
-  restock(quantity) {
-    const available = this.maxQuantity - this.products.length;
-    const add = Math.min(quantity, available);
-    for (let i = 0; i < add; i++) {
-      this.products.push(new Product(this.productType.name, this.productType.price, this.productType.attractiveness));
-    }
-  }
-
-  take() {
-    return this.products.length > 0 ? this.products.pop() : null;
-  }
-
-  needsRestock() {
-    return this.products.length < this.maxQuantity;
+    this.quantity = maxQuantity;
   }
 
   getCurrentQuantity() {
-    return this.products.length;
+    return this.quantity;
+  }
+
+  take() {
+    if (this.quantity > 0) {
+      this.quantity--;
+      return this.productType;
+    }
+    return null;
+  }
+
+  restock() {
+    this.quantity = this.maxQuantity;
   }
 }

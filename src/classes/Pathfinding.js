@@ -2,8 +2,7 @@ export function findPath(start, goal, isWalkable, mapWidth, mapHeight) {
   const openSet = [];
   const cameFrom = new Map();
 
-  function nodeKey(p) { return p.x + ',' + p.y; }
-
+  function nodeKey(p) { return `${p.x},${p.y}`; }
   function heuristic(a, b) {
     return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
   }
@@ -13,15 +12,13 @@ export function findPath(start, goal, isWalkable, mapWidth, mapHeight) {
 
   gScore.set(nodeKey(start), 0);
   fScore.set(nodeKey(start), heuristic(start, goal));
-
   openSet.push({ pos: start, fScore: fScore.get(nodeKey(start)) });
 
-  while (openSet.length > 0) {
+  while (openSet.length) {
     openSet.sort((a, b) => a.fScore - b.fScore);
     const current = openSet.shift().pos;
 
     if (current.x === goal.x && current.y === goal.y) {
-      // reconstruct path
       const path = [];
       let cur = current;
       while (cameFrom.has(nodeKey(cur))) {
@@ -32,28 +29,28 @@ export function findPath(start, goal, isWalkable, mapWidth, mapHeight) {
       return path;
     }
 
-    const neighbors = [
-      { x: current.x + 1, y: current.y },
-      { x: current.x - 1, y: current.y },
-      { x: current.x, y: current.y + 1 },
-      { x: current.x, y: current.y - 1 },
-    ].filter(p => p.x >= 0 && p.y >= 0 && p.x < mapWidth && p.y < mapHeight && isWalkable(p.x, p.y));
+    const directions = [
+      { x: 1, y: 0 }, { x: -1, y: 0 },
+      { x: 0, y: 1 }, { x: 0, y: -1 },
+    ];
 
-    for (const neighbor of neighbors) {
-      const tentativeGScore = gScore.get(nodeKey(current)) + 1;
-      const neighborKey = nodeKey(neighbor);
+    for (const d of directions) {
+      const neighbor = { x: current.x + d.x, y: current.y + d.y };
+      if (neighbor.x < 0 || neighbor.y < 0 || neighbor.x >= mapWidth || neighbor.y >= mapHeight) continue;
+      if (!isWalkable(neighbor.x, neighbor.y)) continue;
 
-      if (!gScore.has(neighborKey) || tentativeGScore < gScore.get(neighborKey)) {
-        cameFrom.set(neighborKey, current);
-        gScore.set(neighborKey, tentativeGScore);
-        fScore.set(neighborKey, tentativeGScore + heuristic(neighbor, goal));
-
-        if (!openSet.find(n => n.pos.x === neighbor.x && n.pos.y === neighbor.y)) {
-          openSet.push({ pos: neighbor, fScore: fScore.get(neighborKey) });
+      const tentativeG = gScore.get(nodeKey(current)) + 1;
+      const nk = nodeKey(neighbor);
+      if (!gScore.has(nk) || tentativeG < gScore.get(nk)) {
+        cameFrom.set(nk, current);
+        gScore.set(nk, tentativeG);
+        fScore.set(nk, tentativeG + heuristic(neighbor, goal));
+        if (!openSet.some(n => n.pos.x === neighbor.x && n.pos.y === neighbor.y)) {
+          openSet.push({ pos: neighbor, fScore: fScore.get(nk) });
         }
       }
     }
   }
 
-  return null; // no path found
+  return []; // нет пути
 }
