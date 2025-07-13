@@ -1,26 +1,30 @@
 export default class Shelf {
   constructor(x, y, productType, maxQuantity) {
-    this.position = { x, y };
-    this.productType = productType;
-    this.maxQuantity = maxQuantity;
-    this.currentQuantity = maxQuantity;
+    this.position = { x, y };            // Координаты полки на карте
+    this.productType = productType;      // Продукт, который хранится на полке (один тип на полку)
+    this.maxQuantity = maxQuantity;      // Максимальная вместимость полки
+    this.currentQuantity = maxQuantity;  // Текущее количество товара (изначально полная)
   }
 
+  // Возвращает текущее количество товара на полке
   getCurrentQuantity() {
     return this.currentQuantity;
   }
-
-  // Берёт один товар и возвращает сам продукт, или null, если на полке пусто
+ 
+  // Покупатель пытается взять товар с полки.
+  // Если товар есть, уменьшаем количество и возвращаем копию продукта
   take() {
     if (this.currentQuantity > 0) {
       this.currentQuantity--;
-      // возвращаем отдельный объект продукта, чтобы не мутировать оригинал
+      // Возвращаем копию объекта продукта, чтобы не мутировать оригинал
       return { ...this.productType };
     }
     return null;
   }
 
-  restock(amount = 10) {
+  // Пополняет запасы на полке
+  restock(amount) {
+    // Добавляем товар, но не превышаем максимальный лимит
     this.currentQuantity = Math.min(this.currentQuantity + amount, this.maxQuantity);
   }
 }
